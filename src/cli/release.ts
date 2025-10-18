@@ -187,12 +187,27 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
     
     // Interactive deployment options
     let shouldDeploy = options.deploy
-    let shouldPublishNpm = options.npm
+    let shouldPublishNpm: boolean | undefined
     
-    // Debug logging to see what's happening
+    // Handle npm publishing logic:
+    // - If --no-npm was explicitly passed (options.npm === false), don't publish
+    // - If config.npm exists and autoPublish is true, auto-publish (unless --no-npm)
+    // - Otherwise, prompt the user if in interactive mode
+    if (options.npm === false) {
+      // Explicitly disabled via --no-npm
+      shouldPublishNpm = false
+    } else if (config.npm?.autoPublish) {
+      // Config says to auto-publish
+      shouldPublishNpm = true
+    } else {
+      // Need to ask user (will be handled in interactive section)
+      shouldPublishNpm = undefined
+    }
+    
+    // Debug logging
     console.log('DEBUG: options.npm =', options.npm)
-    console.log('DEBUG: shouldPublishNpm initial =', shouldPublishNpm)
     console.log('DEBUG: config.npm =', config.npm)
+    console.log('DEBUG: shouldPublishNpm after logic =', shouldPublishNpm)
     
     if (options.interactive !== false && !isCI()) {
       // Ask about GitHub release
