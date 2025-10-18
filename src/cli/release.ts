@@ -28,6 +28,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
   try {
     logger.section('🚀 Go Corp Release Workflow')
     
+    // Run tests FIRST - before any prompts or interaction
+    await runTests()
+    
     // Load configuration
     const config = await loadWorkflowConfig()
     const git = createGitOperations()
@@ -39,9 +42,6 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       logger.error('Not a Git repository')
       exitProcess(1)
     }
-    
-    // Run tests first - fail fast if tests don't pass
-    await runTests()
     
     // Check for uncommitted changes
     const hasUncommitted = await git.hasUncommittedChanges()
