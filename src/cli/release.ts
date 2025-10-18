@@ -189,6 +189,11 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
     let shouldDeploy = options.deploy
     let shouldPublishNpm = options.npm
     
+    // Debug logging to see what's happening
+    console.log('DEBUG: options.npm =', options.npm)
+    console.log('DEBUG: shouldPublishNpm initial =', shouldPublishNpm)
+    console.log('DEBUG: config.npm =', config.npm)
+    
     if (options.interactive !== false && !isCI()) {
       // Ask about GitHub release
       if (options.github !== false && config.github?.autoRelease) {
