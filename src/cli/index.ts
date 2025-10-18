@@ -5,7 +5,7 @@
 import { Command } from 'commander'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { exitProcess, handleProcessSignals, logger, ui } from '../utils/index.js'
+import { exitProcess, handleProcessSignals, logger, ui, createConfirmPrompt } from '../utils/index.js'
 import { loadWorkflowConfig } from '../config/index.js'
 
 const program = new Command()
@@ -130,49 +130,57 @@ async function initWorkflowConfig(force: boolean = false): Promise<void> {
 
   const { prompt } = await import('enquirer')
   
-  // Gather configuration information
-  const answers = await prompt([
-    {
-      type: 'input',
-      name: 'projectName',
-      message: '📝 Project name:',
-      initial: process.cwd().split('/').pop(),
-    },
-    {
-      type: 'input',
-      name: 'repository',
-      message: '🔗 Repository URL (optional):',
-    },
-    {
-      type: 'multiselect',
-      name: 'deploymentTargets',
-      message: '🎯 Select deployment targets:',
-      choices: [
-        { name: 'cloudflare-workers', message: '☁️  Cloudflare Workers' },
-        { name: 'vercel', message: '▲ Vercel' },
-        { name: 'netlify', message: '🔷 Netlify' },
-        { name: 'aws', message: '☁️  AWS' },
-        { name: 'custom', message: '🚀 Custom' },
-      ],
-      styles: ui.selectStyle,
-    },
-    {
-      type: 'confirm',
+  // Gather configuration information step by step
+  const projectName = await prompt<{ projectName: string }>({
+    type: 'input',
+    name: 'projectName',
+    message: '📝 Project name:',
+    initial: process.cwd().split('/').pop(),
+  })
+  
+  const repository = await prompt<{ repository: string }>({
+    type: 'input',
+    name: 'repository',
+    message: '🔗 Repository URL (optional):',
+  })
+  
+  const deploymentTargets = await prompt<{ deploymentTargets: string[] }>({
+    type: 'multiselect',
+    name: 'deploymentTargets',
+    message: '🎯 Select deployment targets:',
+    choices: [
+      { name: 'cloudflare-workers', message: '☁️  Cloudflare Workers' },
+      { name: 'vercel', message: '▲ Vercel' },
+      { name: 'netlify', message: '🔷 Netlify' },
+      { name: 'aws', message: '☁️  AWS' },
+      { name: 'custom', message: '🚀 Custom' },
+    ],
+  })
+  
+  const npmPublishing = await prompt<{ npmPublishing: boolean }>(
+    createConfirmPrompt({
       name: 'npmPublishing',
       message: '📦 Enable NPM publishing?',
       initial: false,
-      format: (value: boolean) => value ? 'Y' : 'N',
-      styles: ui.confirmStyle,
-    },
-    {
-      type: 'confirm',
+    })
+  )
+  
+  const githubReleases = await prompt<{ githubReleases: boolean }>(
+    createConfirmPrompt({
       name: 'githubReleases',
       message: '🚀 Enable GitHub releases?',
       initial: true,
-      format: (value: boolean) => value ? 'Y' : 'N',
-      styles: ui.confirmStyle,
-    },
-  ]) as any
+    })
+  )
+  
+  // Combine answers
+  const answers = {
+    projectName: (projectName as any).projectName,
+    repository: (repository as any).repository,
+    deploymentTargets: (deploymentTargets as any).deploymentTargets,
+    npmPublishing: (npmPublishing as any).npmPublishing,
+    githubReleases: (githubReleases as any).githubReleases,
+  }
 
   // Generate configuration
   const config = {

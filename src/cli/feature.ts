@@ -8,7 +8,7 @@ import { loadWorkflowConfig } from '../config/index.js'
 import { createGitOperations } from '../git/index.js'
 import { createGitHubIntegration } from '../github/index.js'
 import { createChangelogManager } from '../changelog/index.js'
-import { createTimer, exitProcess, logger, ui } from '../utils/index.js'
+import { createTimer, exitProcess, logger, ui, createConfirmPrompt } from '../utils/index.js'
 import type { VersionBumpType } from '../types.js'
 
 export interface FeatureOptions {
@@ -64,14 +64,13 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
     const hasUncommitted = await git.hasUncommittedChanges()
     if (hasUncommitted) {
       if (options.interactive !== false) {
-        const shouldCommit = await prompt<{ commit: boolean }>({
-          type: 'confirm',
-          name: 'commit',
-          message: '💾 You have uncommitted changes. Commit them now?',
-          initial: true,
-          format: (value: boolean) => value ? 'Y' : 'N',
-          styles: ui.confirmStyle,
-        })
+        const shouldCommit = await prompt<{ commit: boolean }>(
+          createConfirmPrompt({
+            name: 'commit',
+            message: '💾 You have uncommitted changes. Commit them now?',
+            initial: true,
+          })
+        )
         
         if ((shouldCommit as any).commit) {
           const commitMessage = await prompt<{ message: string }>({
@@ -152,7 +151,6 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
         message: '📈 Select version bump type:',
         choices: versionOptions,
         initial: 1, // default to minor
-        styles: ui.selectStyle,
       })
       
       versionType = (versionChoice as any).version
@@ -185,14 +183,13 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
       
       // Auto-merge option
       if (autoMerge === undefined) {
-        const autoMergeChoice = await prompt<{ autoMerge: boolean }>({
-          type: 'confirm',
-          name: 'autoMerge',
-          message: '🤖 Enable auto-merge for PR?',
-          initial: config.github?.autoMerge || false,
-          format: (value: boolean) => value ? 'Y' : 'N',
-          styles: ui.confirmStyle,
-        })
+        const autoMergeChoice = await prompt<{ autoMerge: boolean }>(
+          createConfirmPrompt({
+            name: 'autoMerge',
+            message: '🤖 Enable auto-merge for PR?',
+            initial: config.github?.autoMerge || false,
+          })
+        )
         autoMerge = (autoMergeChoice as any).autoMerge
       }
     } else {
@@ -231,14 +228,13 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
       logger.info(`   🔀 Auto-merge: ${autoMerge ? 'Yes' : 'No'}`)
       logger.info(`   📦 Features: ${features.length} items`)
       
-      const finalConfirm = await prompt<{ proceed: boolean }>({
-        type: 'confirm',
-        name: 'proceed',
-        message: '✨ Proceed with feature release?',
-        initial: true,
-        format: (value: boolean) => value ? 'Y' : 'N',
-        styles: ui.confirmStyle,
-      })
+      const finalConfirm = await prompt<{ proceed: boolean }>(
+        createConfirmPrompt({
+          name: 'proceed',
+          message: '✨ Proceed with feature release?',
+          initial: true,
+        })
+      )
       
       if (!(finalConfirm as any).proceed) {
         logger.warning('Feature release cancelled')

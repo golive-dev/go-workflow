@@ -349,3 +349,21 @@ export const ui = {
     },
   },
 }
+
+/**
+ * Create a confirm prompt that shows Y/N instead of true/false
+ */
+export function createConfirmPrompt(options: {
+  name: string
+  message: string
+  initial?: boolean
+}) {
+  return {
+    type: 'toggle',
+    name: options.name,
+    message: options.message,
+    enabled: 'Y',
+    disabled: 'N',
+    initial: options.initial ?? true,
+  }
+}

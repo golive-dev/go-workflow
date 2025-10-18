@@ -9,7 +9,7 @@ import { loadWorkflowConfig } from '../config/index.js'
 import { createGitOperations } from '../git/index.js'
 import { createNpmPublisher } from '../npm/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
-import { createTimer, exitProcess, isCI, logger, ui } from '../utils/index.js'
+import { createTimer, exitProcess, isCI, logger, ui, createConfirmPrompt } from '../utils/index.js'
 import { execa } from 'execa'
 import { existsSync } from 'node:fs'
 import type { VersionBumpType } from '../types.js'
@@ -59,14 +59,13 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           logger.info(`   ... and ${fileStats.length - 10} more files`)
         }
         
-        const shouldCommit = await prompt<{ commit: boolean }>({
-          type: 'confirm',
-          name: 'commit',
-          message: '💾 Would you like to commit these changes now?',
-          initial: true,
-          format: (value: boolean) => value ? 'Y' : 'N',
-          styles: ui.confirmStyle,
-        })
+        const shouldCommit = await prompt<{ commit: boolean }>(
+          createConfirmPrompt({
+            name: 'commit',
+            message: '💾 Would you like to commit these changes now?',
+            initial: true,
+          })
+        )
         
         if ((shouldCommit as any).commit) {
           // Generate a suggested commit message based on the changes
@@ -102,14 +101,13 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           const commitHash = await git.commit((commitMessage as any).message)
           logger.success(`✅ Changes committed: ${commitHash} ${(commitMessage as any).message}`)
         } else {
-          const shouldContinue = await prompt<{ continue: boolean }>({
-            type: 'confirm',
-            name: 'continue',
-            message: '⚠️  Continue release with uncommitted changes?',
-            initial: false,
-            format: (value: boolean) => value ? 'Y' : 'N',
-            styles: ui.confirmStyle,
-          })
+          const shouldContinue = await prompt<{ continue: boolean }>(
+            createConfirmPrompt({
+              name: 'continue',
+              message: '⚠️  Continue release with uncommitted changes?',
+              initial: false,
+            })
+          )
           
           if (!(shouldContinue as any).continue) {
             logger.warning('Please commit or stash your changes before releasing')
@@ -176,7 +174,6 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         message: '📈 Select version bump type:',
         choices: versionOptions,
         initial: changeAnalysis.versionBump === 'patch' ? 0 : changeAnalysis.versionBump === 'minor' ? 1 : 2,
-        styles: ui.selectStyle,
       })
       
       versionType = (versionChoice as any).version
@@ -218,14 +215,13 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
     if (options.interactive !== false && !isCI()) {
       // Ask about GitHub release
       if (options.github !== false && config.github?.autoRelease) {
-        const githubChoice = await prompt<{ github: boolean }>({
-          type: 'confirm',
-          name: 'github',
-          message: '🚀 Create GitHub release?',
-          initial: config.github?.autoRelease || false,
-          format: (value: boolean) => value ? 'Y' : 'N',
-          styles: ui.confirmStyle,
-        })
+        const githubChoice = await prompt<{ github: boolean }>(
+          createConfirmPrompt({
+            name: 'github',
+            message: '🚀 Create GitHub release?',
+            initial: config.github?.autoRelease || false,
+          })
+        )
         options.github = (githubChoice as any).github
       }
       
@@ -242,14 +238,13 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           })
           .join(', ')
         
-        const deployChoice = await prompt<{ deploy: boolean }>({
-          type: 'confirm',
-          name: 'deploy',
-          message: `🚀 Deploy to ${deploymentTargets} after release?`,
-          initial: false,
-          format: (value: boolean) => value ? 'Y' : 'N',
-          styles: ui.confirmStyle,
-        })
+        const deployChoice = await prompt<{ deploy: boolean }>(
+          createConfirmPrompt({
+            name: 'deploy',
+            message: `🚀 Deploy to ${deploymentTargets} after release?`,
+            initial: false,
+          })
+        )
         shouldDeploy = (deployChoice as any).deploy
       }
       
@@ -264,37 +259,34 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
             const access = config.npm?.access || 'public'
             const packageName = packageInfo.name
             
-            const npmChoice = await prompt<{ npm: boolean }>({
-              type: 'confirm', 
-              name: 'npm',
-              message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
-              initial: config.npm?.autoPublish || false,
-              format: (value: boolean) => value ? 'Y' : 'N',
-              styles: ui.confirmStyle,
-            })
+            const npmChoice = await prompt<{ npm: boolean }>(
+              createConfirmPrompt({
+                name: 'npm',
+                message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
+                initial: config.npm?.autoPublish || false,
+              })
+            )
             shouldPublishNpm = (npmChoice as any).npm
           } else {
             // Ask for private packages too
-            const npmChoice = await prompt<{ npm: boolean }>({
-              type: 'confirm',
-              name: 'npm', 
-              message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
-              initial: false,
-              format: (value: boolean) => value ? 'Y' : 'N',
-              styles: ui.confirmStyle,
-            })
+            const npmChoice = await prompt<{ npm: boolean }>(
+              createConfirmPrompt({
+                name: 'npm', 
+                message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
+                initial: false,
+              })
+            )
             shouldPublishNpm = (npmChoice as any).npm
           }
         } else {
           // No package.json found, still ask in case user wants to publish
-          const npmChoice = await prompt<{ npm: boolean }>({
-            type: 'confirm',
-            name: 'npm',
-            message: '📦 Publish to npm?',
-            initial: false,
-            format: (value: boolean) => value ? 'Y' : 'N',
-            styles: ui.confirmStyle,
-          })
+          const npmChoice = await prompt<{ npm: boolean }>(
+            createConfirmPrompt({
+              name: 'npm',
+              message: '📦 Publish to npm?',
+              initial: false,
+            })
+          )
           shouldPublishNpm = (npmChoice as any).npm
         }
       }
@@ -334,14 +326,13 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       ui.box(summary.join('\n'), '📋 Release Summary')
       console.log()
       
-      const finalConfirm = await prompt<{ proceed: boolean }>({
-        type: 'confirm',
-        name: 'proceed',
-        message: `✨ Proceed with ${versionType} release?`,
-        initial: true,
-        format: (value: boolean) => value ? 'Y' : 'N',
-        styles: ui.confirmStyle,
-      })
+      const finalConfirm = await prompt<{ proceed: boolean }>(
+        createConfirmPrompt({
+          name: 'proceed',
+          message: `✨ Proceed with ${versionType} release?`,
+          initial: true,
+        })
+      )
       
       if (!(finalConfirm as any).proceed) {
         logger.warning('Release cancelled')

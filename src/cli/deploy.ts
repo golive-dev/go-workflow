@@ -6,7 +6,7 @@ import { prompt } from 'enquirer'
 import { loadWorkflowConfig } from '../config/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
 import { createGitOperations } from '../git/index.js'
-import { createTimer, exitProcess, logger, ui } from '../utils/index.js'
+import { createTimer, exitProcess, logger, ui, createConfirmPrompt } from '../utils/index.js'
 import type { DeploymentConfig } from '../types.js'
 
 export interface DeployOptions {
@@ -100,7 +100,6 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
           name: 'targets',
           message: '🎯 Select deployment target(s):',
           choices,
-          styles: ui.selectStyle,
         })
         
         deploymentsToRun = (targetChoice as any).targets
@@ -121,14 +120,13 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
       const needsConfirmation = deploymentsToRun.some(d => d.confirmRequired)
       
       if (needsConfirmation || deploymentsToRun.length > 1) {
-        const confirmChoice = await prompt<{ proceed: boolean }>({
-          type: 'confirm',
-          name: 'proceed',
-          message: `✨ Proceed with deployment to ${deploymentsToRun.length} target(s)?`,
-          initial: true,
-          format: (value: boolean) => value ? 'Y' : 'N',
-          styles: ui.confirmStyle,
-        })
+        const confirmChoice = await prompt<{ proceed: boolean }>(
+          createConfirmPrompt({
+            name: 'proceed',
+            message: `✨ Proceed with deployment to ${deploymentsToRun.length} target(s)?`,
+            initial: true,
+          })
+        )
         
         if (!(confirmChoice as any).proceed) {
           logger.warning('Deployment cancelled')
@@ -144,14 +142,13 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
     
     // Ask about parallel deployment for multiple targets
     if (deploymentsToRun.length > 1 && options.confirm !== false) {
-      const parallelChoice = await prompt<{ parallel: boolean }>({
-        type: 'confirm',
-        name: 'parallel',
-        message: '⚡ Deploy to all targets in parallel? (faster but harder to debug)',
-        initial: false,
-        format: (value: boolean) => value ? 'Y' : 'N',
-        styles: ui.confirmStyle,
-      })
+      const parallelChoice = await prompt<{ parallel: boolean }>(
+        createConfirmPrompt({
+          name: 'parallel',
+          message: '⚡ Deploy to all targets in parallel? (faster but harder to debug)',
+          initial: false,
+        })
+      )
       
       if ((parallelChoice as any).parallel) {
         deploymentMethod = 'parallel'
