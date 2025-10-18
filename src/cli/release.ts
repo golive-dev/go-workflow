@@ -378,7 +378,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       logger.step('\n📦 Publishing to npm...')
       
       const npm = createNpmPublisher(config.npm)
-      const publishResult = await npm.publishPackage()
+      const publishResult = await npm.publishPackage({
+        skipTests: true, // Tests already ran at the beginning of release process
+      })
       
       if (publishResult.success) {
         logger.success(`✅ Published ${publishResult.version} to ${publishResult.registry}`)
