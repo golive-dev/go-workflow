@@ -204,10 +204,6 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       shouldPublishNpm = undefined
     }
     
-    // Debug logging
-    console.log('DEBUG: options.npm =', options.npm)
-    console.log('DEBUG: config.npm =', config.npm)
-    console.log('DEBUG: shouldPublishNpm after logic =', shouldPublishNpm)
     
     if (options.interactive !== false && !isCI()) {
       // Ask about GitHub release
