@@ -5,7 +5,7 @@
 import { Command } from 'commander'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { exitProcess, handleProcessSignals, logger } from '../utils/index.js'
+import { exitProcess, handleProcessSignals, logger, ui } from '../utils/index.js'
 import { loadWorkflowConfig } from '../config/index.js'
 
 const program = new Command()
@@ -135,37 +135,42 @@ async function initWorkflowConfig(force: boolean = false): Promise<void> {
     {
       type: 'input',
       name: 'projectName',
-      message: 'Project name:',
+      message: '📝 Project name:',
       initial: process.cwd().split('/').pop(),
     },
     {
       type: 'input',
       name: 'repository',
-      message: 'Repository URL (optional):',
+      message: '🔗 Repository URL (optional):',
     },
     {
       type: 'multiselect',
       name: 'deploymentTargets',
-      message: 'Select deployment targets:',
+      message: '🎯 Select deployment targets:',
       choices: [
-        { name: 'cloudflare-workers', message: 'Cloudflare Workers' },
-        { name: 'vercel', message: 'Vercel' },
-        { name: 'netlify', message: 'Netlify' },
-        { name: 'aws', message: 'AWS' },
-        { name: 'custom', message: 'Custom' },
+        { name: 'cloudflare-workers', message: '☁️  Cloudflare Workers' },
+        { name: 'vercel', message: '▲ Vercel' },
+        { name: 'netlify', message: '🔷 Netlify' },
+        { name: 'aws', message: '☁️  AWS' },
+        { name: 'custom', message: '🚀 Custom' },
       ],
+      styles: ui.selectStyle,
     },
     {
       type: 'confirm',
       name: 'npmPublishing',
-      message: 'Enable NPM publishing?',
+      message: '📦 Enable NPM publishing?',
       initial: false,
+      format: (value: boolean) => value ? 'Y' : 'N',
+      styles: ui.confirmStyle,
     },
     {
       type: 'confirm',
       name: 'githubReleases',
-      message: 'Enable GitHub releases?',
+      message: '🚀 Enable GitHub releases?',
       initial: true,
+      format: (value: boolean) => value ? 'Y' : 'N',
+      styles: ui.confirmStyle,
     },
   ]) as any
 

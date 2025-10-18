@@ -29,7 +29,20 @@ export const logger = {
   
   // Workflow specific loggers
   step: (message: string) => console.log(chalk.cyan(`🚀 ${  message}`)),
-  section: (message: string) => console.log(chalk.bold(`\n${  message  }\n${  '='.repeat(message.length)}`)),
+  section: (message: string) => {
+    console.log()
+    console.log(chalk.bold.cyan(`┌─ ${message}`)) 
+    console.log(chalk.cyan('│'))
+  },
+  
+  // Enhanced section closer
+  sectionEnd: () => console.log(chalk.cyan('└─')),
+  
+  // Bullet point lists
+  bullet: (message: string, level: number = 0) => {
+    const indent = '  '.repeat(level)
+    console.log(chalk.dim(`${indent}• ${message}`))
+  },
   
   // Raw logging for output without formatting
   raw: (message: string) => console.log(message),
@@ -244,4 +257,95 @@ export function handleProcessSignals(cleanup?: () => Promise<void> | void): void
       process.exit(0)
     })
   })
+}
+
+/**
+ * UI utilities for better CLI experience
+ */
+export const ui = {
+  /**
+   * Create a styled box around content
+   */
+  box: (content: string, title?: string) => {
+    const lines = content.split('\n')
+    const maxLength = Math.max(
+      ...lines.map(line => line.length),
+      title ? title.length + 4 : 0
+    )
+    const width = Math.min(maxLength + 4, 80)
+    
+    console.log(chalk.cyan('┌' + '─'.repeat(width - 2) + '┐'))
+    if (title) {
+      const padding = Math.max(0, width - title.length - 4)
+      const leftPad = Math.floor(padding / 2)
+      const rightPad = padding - leftPad
+      console.log(chalk.cyan('│') + ' '.repeat(leftPad) + chalk.bold(title) + ' '.repeat(rightPad + 1) + chalk.cyan('│'))
+      console.log(chalk.cyan('├' + '─'.repeat(width - 2) + '┤'))
+    }
+    
+    lines.forEach(line => {
+      const padding = width - line.length - 3
+      console.log(chalk.cyan('│') + ' ' + line + ' '.repeat(Math.max(0, padding)) + chalk.cyan('│'))
+    })
+    
+    console.log(chalk.cyan('└' + '─'.repeat(width - 2) + '┘'))
+  },
+
+  /**
+   * Create a progress indicator
+   */
+  progress: (current: number, total: number, label?: string) => {
+    const percentage = Math.round((current / total) * 100)
+    const filled = Math.round((current / total) * 20)
+    const empty = 20 - filled
+    const bar = '█'.repeat(filled) + '░'.repeat(empty)
+    const display = `${chalk.cyan(bar)} ${percentage}%${label ? ` ${label}` : ''}`
+    console.log(display)
+  },
+
+  /**
+   * Create a summary table
+   */
+  table: (items: Array<{ label: string; value: string; status?: 'success' | 'warning' | 'error' }>) => {
+    const maxLabelLength = Math.max(...items.map(item => item.label.length))
+    
+    items.forEach(item => {
+      const padding = ' '.repeat(maxLabelLength - item.label.length + 2)
+      const statusIcon = item.status === 'success' ? '✅' : 
+                        item.status === 'warning' ? '⚠️' : 
+                        item.status === 'error' ? '❌' : '•'
+      
+      console.log(`${statusIcon} ${chalk.bold(item.label)}${padding}${item.value}`)
+    })
+  },
+
+  /**
+   * Enhanced confirm prompt styling
+   */
+  confirmStyle: {
+    pointer: chalk.cyan('❯'),
+    prefix: chalk.cyan('?'),
+    style: {
+      answer: chalk.green,
+      message: chalk.bold,
+      default: chalk.dim,
+      help: chalk.dim,
+    },
+  },
+
+  /**
+   * Enhanced select prompt styling  
+   */
+  selectStyle: {
+    pointer: chalk.cyan('❯'),
+    prefix: chalk.cyan('?'),
+    separator: chalk.dim(' │ '),
+    style: {
+      answer: chalk.green,
+      message: chalk.bold,
+      choices: chalk.cyan,
+      default: chalk.dim,
+      help: chalk.dim,
+    },
+  },
 }

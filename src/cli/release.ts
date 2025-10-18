@@ -9,7 +9,7 @@ import { loadWorkflowConfig } from '../config/index.js'
 import { createGitOperations } from '../git/index.js'
 import { createNpmPublisher } from '../npm/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
-import { createTimer, exitProcess, isCI, logger } from '../utils/index.js'
+import { createTimer, exitProcess, isCI, logger, ui } from '../utils/index.js'
 import { execa } from 'execa'
 import { existsSync } from 'node:fs'
 import type { VersionBumpType } from '../types.js'
@@ -62,8 +62,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         const shouldCommit = await prompt<{ commit: boolean }>({
           type: 'confirm',
           name: 'commit',
-          message: 'Would you like to commit these changes now?',
+          message: '💾 Would you like to commit these changes now?',
           initial: true,
+          format: (value: boolean) => value ? 'Y' : 'N',
+          styles: ui.confirmStyle,
         })
         
         if ((shouldCommit as any).commit) {
@@ -103,8 +105,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           const shouldContinue = await prompt<{ continue: boolean }>({
             type: 'confirm',
             name: 'continue',
-            message: 'Continue release with uncommitted changes?',
+            message: '⚠️  Continue release with uncommitted changes?',
             initial: false,
+            format: (value: boolean) => value ? 'Y' : 'N',
+            styles: ui.confirmStyle,
           })
           
           if (!(shouldContinue as any).continue) {
@@ -169,9 +173,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       const versionChoice = await prompt<{ version: VersionBumpType }>({
         type: 'select',
         name: 'version',
-        message: 'Select version bump type:',
+        message: '📈 Select version bump type:',
         choices: versionOptions,
         initial: changeAnalysis.versionBump === 'patch' ? 0 : changeAnalysis.versionBump === 'minor' ? 1 : 2,
+        styles: ui.selectStyle,
       })
       
       versionType = (versionChoice as any).version
@@ -216,8 +221,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         const githubChoice = await prompt<{ github: boolean }>({
           type: 'confirm',
           name: 'github',
-          message: 'Create GitHub release?',
+          message: '🚀 Create GitHub release?',
           initial: config.github?.autoRelease || false,
+          format: (value: boolean) => value ? 'Y' : 'N',
+          styles: ui.confirmStyle,
         })
         options.github = (githubChoice as any).github
       }
@@ -238,8 +245,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         const deployChoice = await prompt<{ deploy: boolean }>({
           type: 'confirm',
           name: 'deploy',
-          message: `Deploy to ${deploymentTargets} after release?`,
+          message: `🚀 Deploy to ${deploymentTargets} after release?`,
           initial: false,
+          format: (value: boolean) => value ? 'Y' : 'N',
+          styles: ui.confirmStyle,
         })
         shouldDeploy = (deployChoice as any).deploy
       }
@@ -260,6 +269,8 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
               name: 'npm',
               message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
               initial: config.npm?.autoPublish || false,
+              format: (value: boolean) => value ? 'Y' : 'N',
+              styles: ui.confirmStyle,
             })
             shouldPublishNpm = (npmChoice as any).npm
           } else {
@@ -269,6 +280,8 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
               name: 'npm', 
               message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
               initial: false,
+              format: (value: boolean) => value ? 'Y' : 'N',
+              styles: ui.confirmStyle,
             })
             shouldPublishNpm = (npmChoice as any).npm
           }
@@ -279,6 +292,8 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
             name: 'npm',
             message: '📦 Publish to npm?',
             initial: false,
+            format: (value: boolean) => value ? 'Y' : 'N',
+            styles: ui.confirmStyle,
           })
           shouldPublishNpm = (npmChoice as any).npm
         }
@@ -315,14 +330,17 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         npmSummary,
       ]
       
-      logger.info('\n📋 Release Summary:')
-      summary.forEach(item => logger.info(`   ${item}`))
+      console.log()
+      ui.box(summary.join('\n'), '📋 Release Summary')
+      console.log()
       
       const finalConfirm = await prompt<{ proceed: boolean }>({
         type: 'confirm',
         name: 'proceed',
-        message: `\nProceed with ${versionType} release?`,
+        message: `✨ Proceed with ${versionType} release?`,
         initial: true,
+        format: (value: boolean) => value ? 'Y' : 'N',
+        styles: ui.confirmStyle,
       })
       
       if (!(finalConfirm as any).proceed) {
@@ -390,15 +408,21 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
     }
     
     // Show final summary
-    logger.section('\n🎉 Release Complete!')
+    console.log()
+    logger.section('🎉 Release Complete!')
     logger.success(`✅ Released version ${result.version.to} in ${timer.elapsedFormatted()}`)
     
     if (result.actions.length > 0) {
-      logger.info('\n📋 Actions completed:')
-      result.actions.forEach(action => {
-        const status = action.success ? '✅' : '❌'
-        logger.info(`   ${status} ${action.name}`)
-      })
+      console.log()
+      logger.section('📋 Actions completed')
+      ui.table(
+        result.actions.map(action => ({
+          label: action.name,
+          value: action.duration ? `${Math.round(action.duration)}ms` : '',
+          status: action.success ? 'success' : 'error'
+        }))
+      )
+      logger.sectionEnd()
     }
     
     // Show next steps

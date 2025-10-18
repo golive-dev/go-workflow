@@ -8,7 +8,7 @@ import { loadWorkflowConfig } from '../config/index.js'
 import { createGitOperations } from '../git/index.js'
 import { createGitHubIntegration } from '../github/index.js'
 import { createChangelogManager } from '../changelog/index.js'
-import { createTimer, exitProcess, logger } from '../utils/index.js'
+import { createTimer, exitProcess, logger, ui } from '../utils/index.js'
 import type { VersionBumpType } from '../types.js'
 
 export interface FeatureOptions {
@@ -67,8 +67,10 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
         const shouldCommit = await prompt<{ commit: boolean }>({
           type: 'confirm',
           name: 'commit',
-          message: 'You have uncommitted changes. Commit them now?',
+          message: '💾 You have uncommitted changes. Commit them now?',
           initial: true,
+          format: (value: boolean) => value ? 'Y' : 'N',
+          styles: ui.confirmStyle,
         })
         
         if ((shouldCommit as any).commit) {
@@ -147,9 +149,10 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
       const versionChoice = await prompt<{ version: VersionBumpType }>({
         type: 'select',
         name: 'version',
-        message: 'Select version bump type:',
+        message: '📈 Select version bump type:',
         choices: versionOptions,
         initial: 1, // default to minor
+        styles: ui.selectStyle,
       })
       
       versionType = (versionChoice as any).version
@@ -185,8 +188,10 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
         const autoMergeChoice = await prompt<{ autoMerge: boolean }>({
           type: 'confirm',
           name: 'autoMerge',
-          message: 'Enable auto-merge for PR?',
+          message: '🤖 Enable auto-merge for PR?',
           initial: config.github?.autoMerge || false,
+          format: (value: boolean) => value ? 'Y' : 'N',
+          styles: ui.confirmStyle,
         })
         autoMerge = (autoMergeChoice as any).autoMerge
       }
@@ -229,8 +234,10 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
       const finalConfirm = await prompt<{ proceed: boolean }>({
         type: 'confirm',
         name: 'proceed',
-        message: '\nProceed with feature release?',
+        message: '✨ Proceed with feature release?',
         initial: true,
+        format: (value: boolean) => value ? 'Y' : 'N',
+        styles: ui.confirmStyle,
       })
       
       if (!(finalConfirm as any).proceed) {
@@ -320,7 +327,8 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
     }
     
     // Show final summary
-    logger.section('\n🎉 Feature Release Complete!')
+    console.log()
+    logger.section('🎉 Feature Release Complete!')
     logger.success(`✅ Feature branch workflow completed in ${timer.elapsedFormatted()}`)
     
     logger.info('\n📋 Summary:')

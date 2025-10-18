@@ -6,7 +6,7 @@ import { prompt } from 'enquirer'
 import { loadWorkflowConfig } from '../config/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
 import { createGitOperations } from '../git/index.js'
-import { createTimer, exitProcess, logger } from '../utils/index.js'
+import { createTimer, exitProcess, logger, ui } from '../utils/index.js'
 import type { DeploymentConfig } from '../types.js'
 
 export interface DeployOptions {
@@ -98,8 +98,9 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
         const targetChoice = await prompt<{ targets: DeploymentConfig[] }>({
           type: 'select',
           name: 'targets',
-          message: 'Select deployment target(s):',
+          message: '🎯 Select deployment target(s):',
           choices,
+          styles: ui.selectStyle,
         })
         
         deploymentsToRun = (targetChoice as any).targets
@@ -123,8 +124,10 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
         const confirmChoice = await prompt<{ proceed: boolean }>({
           type: 'confirm',
           name: 'proceed',
-          message: `Proceed with deployment to ${deploymentsToRun.length} target(s)?`,
+          message: `✨ Proceed with deployment to ${deploymentsToRun.length} target(s)?`,
           initial: true,
+          format: (value: boolean) => value ? 'Y' : 'N',
+          styles: ui.confirmStyle,
         })
         
         if (!(confirmChoice as any).proceed) {
@@ -144,8 +147,10 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
       const parallelChoice = await prompt<{ parallel: boolean }>({
         type: 'confirm',
         name: 'parallel',
-        message: 'Deploy to all targets in parallel? (faster but harder to debug)',
+        message: '⚡ Deploy to all targets in parallel? (faster but harder to debug)',
         initial: false,
+        format: (value: boolean) => value ? 'Y' : 'N',
+        styles: ui.confirmStyle,
       })
       
       if ((parallelChoice as any).parallel) {
@@ -162,30 +167,35 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
     const successful = results.filter(r => r.success)
     const failed = results.filter(r => !r.success)
     
-    logger.section('\n📊 Deployment Results')
+    // Results already handled above with new UI
     
-    if (successful.length > 0) {
-      logger.success(`✅ Successfully deployed to ${successful.length} target(s):`)
-      successful.forEach(result => {
-        const duration = result.duration ? ` (${Math.round(result.duration / 1000)}s)` : ''
-        const url = result.url ? ` → ${result.url}` : ''
-        logger.success(`   • ${result.target}${duration}${url}`)
-      })
-    }
-    
-    if (failed.length > 0) {
-      logger.error(`❌ Failed to deploy to ${failed.length} target(s):`)
+    if (successful.length > 0 || failed.length > 0) {
+      console.log()
+      logger.section('Deployment Results')
+      
+      const allResults = [...successful, ...failed]
+      ui.table(
+        allResults.map(result => ({
+          label: result.target,
+          value: result.success 
+            ? `${result.duration ? Math.round(result.duration / 1000) + 's' : 'completed'}${result.url ? ` → ${result.url}` : ''}`
+            : result.error || 'failed',
+          status: result.success ? 'success' : 'error'
+        }))
+      )
+      
+      // Show detailed error logs for failed deployments
       failed.forEach(result => {
-        logger.error(`   • ${result.target}: ${result.error}`)
-        
-        // Show logs for failed deployments
         if (result.logs && result.logs.length > 0) {
-          logger.info('     📋 Error logs:')
-          result.logs.slice(-5).forEach(log => {
-            logger.info(`       ${log}`)
+          console.log()
+          logger.warning(`Error logs for ${result.target}:`)
+          result.logs.slice(-3).forEach(log => {
+            logger.bullet(log.trim(), 1)
           })
         }
       })
+      
+      logger.sectionEnd()
     }
     
     // Overall summary
