@@ -223,30 +223,40 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         shouldDeploy = (deployChoice as any).deploy
       }
       
-      // Ask about npm publishing
+      // Ask about npm publishing - always ask unless explicitly set
       if (shouldPublishNpm === undefined) {
         const npm = createNpmPublisher(config.npm)
         const packageInfo = npm.getPackageInfo()
         
-        if (packageInfo && !npm.isPrivatePackage()) {
-          // More descriptive npm prompt
-          const registry = config.npm?.registry || 'https://registry.npmjs.org'
-          const access = config.npm?.access || 'public'
-          const packageName = packageInfo.name
-          
-          const npmChoice = await prompt<{ npm: boolean }>({
-            type: 'confirm', 
-            name: 'npm',
-            message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
-            initial: config.npm?.autoPublish || false,
-          })
-          shouldPublishNpm = (npmChoice as any).npm
-        } else if (packageInfo?.private) {
-          // Ask even for private packages in case they want to publish
+        if (packageInfo) {
+          if (!npm.isPrivatePackage()) {
+            // More descriptive npm prompt for public packages
+            const access = config.npm?.access || 'public'
+            const packageName = packageInfo.name
+            
+            const npmChoice = await prompt<{ npm: boolean }>({
+              type: 'confirm', 
+              name: 'npm',
+              message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
+              initial: config.npm?.autoPublish || false,
+            })
+            shouldPublishNpm = (npmChoice as any).npm
+          } else {
+            // Ask for private packages too
+            const npmChoice = await prompt<{ npm: boolean }>({
+              type: 'confirm',
+              name: 'npm', 
+              message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
+              initial: false,
+            })
+            shouldPublishNpm = (npmChoice as any).npm
+          }
+        } else {
+          // No package.json found, still ask in case user wants to publish
           const npmChoice = await prompt<{ npm: boolean }>({
             type: 'confirm',
-            name: 'npm', 
-            message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
+            name: 'npm',
+            message: `📦 Publish to npm?`,
             initial: false,
           })
           shouldPublishNpm = (npmChoice as any).npm
