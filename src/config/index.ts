@@ -180,7 +180,7 @@ function loadConfigFromEnv(): Partial<WorkflowConfig> {
   
   // NPM configuration
   if (process.env.NPM_TOKEN) {
-    const npmConfig: any = {
+    const npmConfig = {
       ...config.npm,
       autoPublish: process.env.GO_WORKFLOW_AUTO_PUBLISH === 'true',
     }

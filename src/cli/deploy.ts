@@ -6,7 +6,7 @@ import { prompt } from 'enquirer'
 import { loadWorkflowConfig } from '../config/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
 import { createGitOperations } from '../git/index.js'
-import { createTimer, exitProcess, logger, ui, createConfirmPrompt } from '../utils/index.js'
+import { createConfirmPrompt, createTimer, exitProcess, logger, ui } from '../utils/index.js'
 import type { DeploymentConfig } from '../types.js'
 
 export interface DeployOptions {
@@ -74,7 +74,11 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
       // Interactive target selection
       if (config.deployments.length === 1) {
         deploymentsToRun = config.deployments
-        const deployment = config.deployments[0]!
+        const deployment = config.deployments[0]
+        if (!deployment) {
+          logger.error('No deployment configurations found')
+          exitProcess(1)
+        }
         logger.info(`\n🎯 Deploying to: ${deployment.name || deployment.target}`)
       } else {
         logger.info('\n📋 Available deployment targets:')
@@ -102,7 +106,7 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
           choices,
         })
         
-        deploymentsToRun = (targetChoice as any).targets
+        deploymentsToRun = targetChoice.targets
       }
     }
     
@@ -125,10 +129,10 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
             name: 'proceed',
             message: `✨ Proceed with deployment to ${deploymentsToRun.length} target(s)?`,
             initial: true,
-          })
+          }),
         )
         
-        if (!(confirmChoice as any).proceed) {
+        if (!confirmChoice.proceed) {
           logger.warning('Deployment cancelled')
           exitProcess(0)
         }
@@ -147,10 +151,10 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
           name: 'parallel',
           message: '⚡ Deploy to all targets in parallel? (faster but harder to debug)',
           initial: false,
-        })
+        }),
       )
       
-      if ((parallelChoice as any).parallel) {
+      if (parallelChoice.parallel) {
         deploymentMethod = 'parallel'
       }
     }
@@ -175,10 +179,10 @@ export async function runDeploy(options: DeployOptions): Promise<void> {
         allResults.map(result => ({
           label: result.target,
           value: result.success 
-            ? `${result.duration ? Math.round(result.duration / 1000) + 's' : 'completed'}${result.url ? ` → ${result.url}` : ''}`
+            ? `${result.duration ? `${Math.round(result.duration / 1000)  }s` : 'completed'}${result.url ? ` → ${result.url}` : ''}`
             : result.error || 'failed',
-          status: result.success ? 'success' : 'error'
-        }))
+          status: result.success ? 'success' : 'error',
+        })),
       )
       
       // Show detailed error logs for failed deployments

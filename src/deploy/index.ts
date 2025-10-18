@@ -100,7 +100,7 @@ export class DeploymentManager {
         return result.value
       } else {
         return {
-          target: deployments[index]!.target,
+          target: (deployments[index]?.target || 'custom') as DeploymentTarget,
           success: false,
           error: result.reason instanceof Error ? result.reason.message : String(result.reason),
           duration: 0,
@@ -125,7 +125,11 @@ export class DeploymentManager {
     const [cmd, ...args] = command.split(' ')
 
     await retry(async () => {
-      const { stdout, stderr } = await execa(cmd!, args, {
+      if (!cmd) {
+        throw new Error('Command is empty')
+      }
+      
+      const { stdout, stderr } = await execa(cmd, args, {
         cwd,
         env,
         stdio: 'pipe',
@@ -202,7 +206,11 @@ export class DeploymentManager {
       }
 
       const [cmd, ...args] = statusCommand.split(' ')
-      const { stdout } = await execa(cmd!, args, {
+      if (!cmd) {
+        throw new Error('Command is empty')
+      }
+      
+      const { stdout } = await execa(cmd, args, {
         cwd: deployment.cwd || this.cwd,
         env: {
           ...process.env,

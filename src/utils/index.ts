@@ -270,25 +270,25 @@ export const ui = {
     const lines = content.split('\n')
     const maxLength = Math.max(
       ...lines.map(line => line.length),
-      title ? title.length + 4 : 0
+      title ? title.length + 4 : 0,
     )
     const width = Math.min(maxLength + 4, 80)
     
-    console.log(chalk.cyan('┌' + '─'.repeat(width - 2) + '┐'))
+    console.log(chalk.cyan(`┌${  '─'.repeat(width - 2)  }┐`))
     if (title) {
       const padding = Math.max(0, width - title.length - 4)
       const leftPad = Math.floor(padding / 2)
       const rightPad = padding - leftPad
       console.log(chalk.cyan('│') + ' '.repeat(leftPad) + chalk.bold(title) + ' '.repeat(rightPad + 1) + chalk.cyan('│'))
-      console.log(chalk.cyan('├' + '─'.repeat(width - 2) + '┤'))
+      console.log(chalk.cyan(`├${  '─'.repeat(width - 2)  }┤`))
     }
     
     lines.forEach(line => {
       const padding = width - line.length - 3
-      console.log(chalk.cyan('│') + ' ' + line + ' '.repeat(Math.max(0, padding)) + chalk.cyan('│'))
+      console.log(`${chalk.cyan('│')  } ${  line  }${' '.repeat(Math.max(0, padding))  }${chalk.cyan('│')}`)
     })
     
-    console.log(chalk.cyan('└' + '─'.repeat(width - 2) + '┘'))
+    console.log(chalk.cyan(`└${  '─'.repeat(width - 2)  }┘`))
   },
 
   /**
@@ -312,8 +312,8 @@ export const ui = {
     items.forEach(item => {
       const padding = ' '.repeat(maxLabelLength - item.label.length + 2)
       const statusIcon = item.status === 'success' ? '✅' : 
-                        item.status === 'warning' ? '⚠️' : 
-                        item.status === 'error' ? '❌' : '•'
+        item.status === 'warning' ? '⚠️' : 
+          item.status === 'error' ? '❌' : '•'
       
       console.log(`${statusIcon} ${chalk.bold(item.label)}${padding}${item.value}`)
     })

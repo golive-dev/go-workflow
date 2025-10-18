@@ -172,8 +172,8 @@ export class GitHubIntegration {
         branch: data.headRefName,
         baseBranch: data.baseRefName,
         author: data.author.login,
-        labels: data.labels.map((l: any) => l.name),
-        assignees: data.assignees.map((a: any) => a.login),
+        labels: data.labels.map((l: { name: string }) => l.name),
+        assignees: data.assignees.map((a: { login: string }) => a.login),
         createdAt: new Date(data.createdAt),
         updatedAt: new Date(data.updatedAt),
       }
@@ -319,7 +319,15 @@ export class GitHubIntegration {
   /**
    * Get workflow runs for a branch
    */
-  async getWorkflowRuns(branch?: string): Promise<any[]> {
+  async getWorkflowRuns(branch?: string): Promise<Array<{
+    status: string
+    conclusion: string
+    databaseId: number
+    workflowName: string
+    headBranch: string
+    createdAt: string
+    updatedAt: string
+  }>> {
     try {
       const args = ['run', 'list', '--json', 'databaseId,status,conclusion,workflowName,headBranch,createdAt,updatedAt']
       
@@ -344,12 +352,12 @@ export class GitHubIntegration {
     
     while (Date.now() - startTime < timeoutMs) {
       const runs = await this.getWorkflowRuns(branch)
-      const pendingRuns = runs.filter(run => 
+      const pendingRuns = runs.filter((run: { status: string }) => 
         run.status === 'in_progress' || run.status === 'queued' || run.status === 'waiting',
       )
 
       if (pendingRuns.length === 0) {
-        const failedRuns = runs.filter(run => run.conclusion === 'failure')
+        const failedRuns = runs.filter((run: { conclusion: string }) => run.conclusion === 'failure')
         if (failedRuns.length > 0) {
           logger.warning(`${failedRuns.length} workflow(s) failed for branch ${branch}`)
           return false

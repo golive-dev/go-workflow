@@ -8,7 +8,7 @@ import { loadWorkflowConfig } from '../config/index.js'
 import { createGitOperations } from '../git/index.js'
 import { createGitHubIntegration } from '../github/index.js'
 import { createChangelogManager } from '../changelog/index.js'
-import { createTimer, exitProcess, logger, ui, createConfirmPrompt } from '../utils/index.js'
+import { createConfirmPrompt, createTimer, exitProcess, logger } from '../utils/index.js'
 import type { VersionBumpType } from '../types.js'
 
 export interface FeatureOptions {
@@ -69,10 +69,10 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
             name: 'commit',
             message: '💾 You have uncommitted changes. Commit them now?',
             initial: true,
-          })
+          }),
         )
         
-        if ((shouldCommit as any).commit) {
+        if (shouldCommit.commit) {
           const commitMessage = await prompt<{ message: string }>({
             type: 'input',
             name: 'message',
@@ -82,7 +82,7 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
           })
           
           await git.stageFiles()
-          await git.commit((commitMessage as any).message)
+          await git.commit(commitMessage.message)
           logger.success('✅ Changes committed')
         } else {
           logger.error('Please commit or stash your changes first')
@@ -153,7 +153,7 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
         initial: 1, // default to minor
       })
       
-      versionType = (versionChoice as any).version
+      versionType = versionChoice.version
       
       // Get feature title
       if (!title) {
@@ -166,7 +166,7 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
           ).join(' ').replace(/^Feature /, ''),
           validate: value => value.length > 0 || 'Title is required',
         })
-        title = (titlePrompt as any).title
+        title = titlePrompt.title
       }
       
       // Get feature description
@@ -178,7 +178,7 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
           initial: 'Enhanced functionality with improved user experience and maintainability',
           validate: value => value.length > 0 || 'Description is required',
         })
-        description = (descriptionPrompt as any).description
+        description = descriptionPrompt.description
       }
       
       // Auto-merge option
@@ -188,9 +188,9 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
             name: 'autoMerge',
             message: '🤖 Enable auto-merge for PR?',
             initial: config.github?.autoMerge || false,
-          })
+          }),
         )
-        autoMerge = (autoMergeChoice as any).autoMerge
+        autoMerge = autoMergeChoice.autoMerge
       }
     } else {
       // Non-interactive defaults
@@ -233,10 +233,10 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
           name: 'proceed',
           message: '✨ Proceed with feature release?',
           initial: true,
-        })
+        }),
       )
       
-      if (!(finalConfirm as any).proceed) {
+      if (!finalConfirm.proceed) {
         logger.warning('Feature release cancelled')
         exitProcess(0)
       }
@@ -254,15 +254,15 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
     
     // Commit changelog changes
     await git.stageFiles(['CHANGELOG.md'])
-    await git.commit(`docs: add changelog entry for v${newVersion} ${title!.toLowerCase()}`)
+    await git.commit(`docs: add changelog entry for v${newVersion} ${title?.toLowerCase() || 'feature'}`)
     await git.push('origin', currentBranch)
     
     // Create comprehensive PR
     logger.step('📝 Creating pull request...')
     const pr = await github.createComprehensivePR(
       currentBranch,
-      title!,
-      description!,
+      title || 'Feature',
+      description || 'New feature',
       features,
       changeStats,
     )
@@ -301,8 +301,8 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
           logger.step('🚀 Creating GitHub release...')
           const release = await github.createComprehensiveRelease(
             newVersion,
-            title!,
-            description!,
+            title || 'Feature',
+            description || 'New feature',
             features,
             changeStats,
             currentVersion,
@@ -385,13 +385,13 @@ Examples:
   // Parse title
   const titleIndex = args.findIndex(arg => arg === '-t' || arg === '--title')
   if (titleIndex !== -1 && args[titleIndex + 1]) {
-    (options as any).title = args[titleIndex + 1]
+    options.title = args[titleIndex + 1]
   }
   
   // Parse description
   const descIndex = args.findIndex(arg => arg === '-d' || arg === '--description')
   if (descIndex !== -1 && args[descIndex + 1]) {
-    (options as any).description = args[descIndex + 1]
+    options.description = args[descIndex + 1]
   }
   
   runFeatureRelease(options).catch((error) => {

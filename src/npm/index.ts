@@ -204,11 +204,11 @@ export class NpmPublisher {
       }
       
       if (options.tag || this.config.tag) {
-        args.push('--tag', options.tag || this.config.tag!)
+        args.push('--tag', options.tag || this.config.tag || 'latest')
       }
       
       if (options.access || this.config.access) {
-        args.push('--access', options.access || this.config.access!)
+        args.push('--access', options.access || this.config.access || 'public')
       }
 
       // Set registry if specified

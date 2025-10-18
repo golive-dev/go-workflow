@@ -5,7 +5,7 @@
 import { Command } from 'commander'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { exitProcess, handleProcessSignals, logger, ui, createConfirmPrompt } from '../utils/index.js'
+import { createConfirmPrompt, exitProcess, handleProcessSignals, logger } from '../utils/index.js'
 import { loadWorkflowConfig } from '../config/index.js'
 
 const program = new Command()
@@ -162,7 +162,7 @@ async function initWorkflowConfig(force: boolean = false): Promise<void> {
       name: 'npmPublishing',
       message: '📦 Enable NPM publishing?',
       initial: false,
-    })
+    }),
   )
   
   const githubReleases = await prompt<{ githubReleases: boolean }>(
@@ -170,16 +170,16 @@ async function initWorkflowConfig(force: boolean = false): Promise<void> {
       name: 'githubReleases',
       message: '🚀 Enable GitHub releases?',
       initial: true,
-    })
+    }),
   )
   
   // Combine answers
   const answers = {
-    projectName: (projectName as any).projectName,
-    repository: (repository as any).repository,
-    deploymentTargets: (deploymentTargets as any).deploymentTargets,
-    npmPublishing: (npmPublishing as any).npmPublishing,
-    githubReleases: (githubReleases as any).githubReleases,
+    projectName: projectName.projectName,
+    repository: repository.repository,
+    deploymentTargets: deploymentTargets.deploymentTargets,
+    npmPublishing: npmPublishing.npmPublishing,
+    githubReleases: githubReleases.githubReleases,
   }
 
   // Generate configuration

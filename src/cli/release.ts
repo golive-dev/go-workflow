@@ -9,7 +9,7 @@ import { loadWorkflowConfig } from '../config/index.js'
 import { createGitOperations } from '../git/index.js'
 import { createNpmPublisher } from '../npm/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
-import { createTimer, exitProcess, isCI, logger, ui, createConfirmPrompt } from '../utils/index.js'
+import { createConfirmPrompt, createTimer, exitProcess, isCI, logger, ui } from '../utils/index.js'
 import { execa } from 'execa'
 import { existsSync } from 'node:fs'
 import type { VersionBumpType } from '../types.js'
@@ -64,10 +64,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
             name: 'commit',
             message: '💾 Would you like to commit these changes now?',
             initial: true,
-          })
+          }),
         )
         
-        if ((shouldCommit as any).commit) {
+        if (shouldCommit.commit) {
           // Generate a suggested commit message based on the changes
           let suggestedMessage = 'chore: prepare for release'
           
@@ -98,18 +98,18 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           })
           
           await git.stageFiles()
-          const commitHash = await git.commit((commitMessage as any).message)
-          logger.success(`✅ Changes committed: ${commitHash} ${(commitMessage as any).message}`)
+          const commitHash = await git.commit(commitMessage.message)
+          logger.success(`✅ Changes committed: ${commitHash} ${commitMessage.message}`)
         } else {
           const shouldContinue = await prompt<{ continue: boolean }>(
             createConfirmPrompt({
               name: 'continue',
               message: '⚠️  Continue release with uncommitted changes?',
               initial: false,
-            })
+            }),
           )
           
-          if (!(shouldContinue as any).continue) {
+          if (!shouldContinue.continue) {
             logger.warning('Please commit or stash your changes before releasing')
             exitProcess(1)
           }
@@ -176,7 +176,7 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         initial: changeAnalysis.versionBump === 'patch' ? 0 : changeAnalysis.versionBump === 'minor' ? 1 : 2,
       })
       
-      versionType = (versionChoice as any).version
+      versionType = versionChoice.version
     } else if (!versionType) {
       // Non-interactive mode - analyze changes
       changeAnalysis = await git.analyzeChangesForVersionBump()
@@ -184,7 +184,11 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       logger.info(`🔍 Auto-detected ${versionType} release`)
     }
     
-    const newVersion = semver.inc(currentVersion, versionType!)
+    if (!versionType) {
+      throw new Error('Version type not determined')
+    }
+    
+    const newVersion = semver.inc(currentVersion, versionType)
     if (!newVersion) {
       logger.error(`Invalid version calculation from ${currentVersion}`)
       exitProcess(1)
@@ -220,9 +224,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
             name: 'github',
             message: '🚀 Create GitHub release?',
             initial: config.github?.autoRelease || false,
-          })
+          }),
         )
-        options.github = (githubChoice as any).github
+        options.github = githubChoice.github
       }
       
       // Ask about deployment
@@ -243,9 +247,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
             name: 'deploy',
             message: `🚀 Deploy to ${deploymentTargets} after release?`,
             initial: false,
-          })
+          }),
         )
-        shouldDeploy = (deployChoice as any).deploy
+        shouldDeploy = deployChoice.deploy
       }
       
       // Ask about npm publishing - always ask unless explicitly set
@@ -264,9 +268,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
                 name: 'npm',
                 message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
                 initial: config.npm?.autoPublish || false,
-              })
+              }),
             )
-            shouldPublishNpm = (npmChoice as any).npm
+            shouldPublishNpm = npmChoice.npm
           } else {
             // Ask for private packages too
             const npmChoice = await prompt<{ npm: boolean }>(
@@ -274,9 +278,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
                 name: 'npm', 
                 message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
                 initial: false,
-              })
+              }),
             )
-            shouldPublishNpm = (npmChoice as any).npm
+            shouldPublishNpm = npmChoice.npm
           }
         } else {
           // No package.json found, still ask in case user wants to publish
@@ -285,9 +289,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
               name: 'npm',
               message: '📦 Publish to npm?',
               initial: false,
-            })
+            }),
           )
-          shouldPublishNpm = (npmChoice as any).npm
+          shouldPublishNpm = npmChoice.npm
         }
       }
       
@@ -331,10 +335,10 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           name: 'proceed',
           message: `✨ Proceed with ${versionType} release?`,
           initial: true,
-        })
+        }),
       )
       
-      if (!(finalConfirm as any).proceed) {
+      if (!finalConfirm.proceed) {
         logger.warning('Release cancelled')
         exitProcess(0)
       }
@@ -410,8 +414,8 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
         result.actions.map(action => ({
           label: action.name,
           value: action.duration ? `${Math.round(action.duration)}ms` : '',
-          status: action.success ? 'success' : 'error'
-        }))
+          status: action.success ? 'success' : 'error',
+        })),
       )
       logger.sectionEnd()
     }
