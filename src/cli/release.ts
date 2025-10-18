@@ -203,37 +203,85 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       
       // Ask about deployment
       if (shouldDeploy === undefined && config.deployments && config.deployments.length > 0) {
+        // Show specific deployment targets
+        const deploymentTargets = config.deployments
+          .map(d => {
+            if (d.target === 'cloudflare-workers') return '☁️  Cloudflare Workers'
+            if (d.target === 'vercel') return '▲ Vercel'
+            if (d.target === 'netlify') return '🔷 Netlify'
+            if (d.target === 'aws') return '☁️  AWS'
+            return `🚀 ${d.name || d.target}`
+          })
+          .join(', ')
+        
         const deployChoice = await prompt<{ deploy: boolean }>({
           type: 'confirm',
           name: 'deploy',
-          message: `Deploy to ${config.deployments.length} target(s) after release?`,
+          message: `Deploy to ${deploymentTargets} after release?`,
           initial: false,
         })
         shouldDeploy = (deployChoice as any).deploy
       }
       
       // Ask about npm publishing
-      if (shouldPublishNpm === undefined && config.npm?.autoPublish !== false) {
+      if (shouldPublishNpm === undefined) {
         const npm = createNpmPublisher(config.npm)
         const packageInfo = npm.getPackageInfo()
         
         if (packageInfo && !npm.isPrivatePackage()) {
+          // More descriptive npm prompt
+          const registry = config.npm?.registry || 'https://registry.npmjs.org'
+          const access = config.npm?.access || 'public'
+          const packageName = packageInfo.name
+          
+          const npmChoice = await prompt<{ npm: boolean }>({
+            type: 'confirm', 
+            name: 'npm',
+            message: `📦 Publish ${packageName}@${newVersion} to npm (${access} package)?`,
+            initial: config.npm?.autoPublish || false,
+          })
+          shouldPublishNpm = (npmChoice as any).npm
+        } else if (packageInfo?.private) {
+          // Ask even for private packages in case they want to publish
           const npmChoice = await prompt<{ npm: boolean }>({
             type: 'confirm',
-            name: 'npm',
-            message: 'Publish to npm?',
-            initial: config.npm?.autoPublish || false,
+            name: 'npm', 
+            message: `📦 Publish ${packageInfo.name}@${newVersion} to npm? (currently marked private)`,
+            initial: false,
           })
           shouldPublishNpm = (npmChoice as any).npm
         }
       }
       
       // Final confirmation
+      let deploymentSummary = '🚀 Deploy: No'
+      if (shouldDeploy && config.deployments && config.deployments.length > 0) {
+        const targets = config.deployments
+          .map(d => {
+            if (d.target === 'cloudflare-workers') return 'Cloudflare Workers'
+            if (d.target === 'vercel') return 'Vercel'
+            if (d.target === 'netlify') return 'Netlify'
+            if (d.target === 'aws') return 'AWS'
+            return d.name || d.target
+          })
+          .join(', ')
+        deploymentSummary = `🚀 Deploy: Yes → ${targets}`
+      }
+      
+      let npmSummary = '📦 NPM publish: No'
+      if (shouldPublishNpm) {
+        const npm = createNpmPublisher(config.npm)
+        const packageInfo = npm.getPackageInfo()
+        const packageName = packageInfo?.name || 'package'
+        const access = config.npm?.access || 'public'
+        npmSummary = `📦 NPM publish: Yes → ${packageName}@${newVersion} (${access})`
+      }
+      
       const summary = [
         `🏷️  Version: ${currentVersion} → ${newVersion}`,
         `📦 GitHub release: ${options.github !== false ? 'Yes' : 'No'}`,
-        shouldDeploy ? `🚀 Deploy: Yes (${config.deployments?.length || 0} targets)` : '🚀 Deploy: No',
-        shouldPublishNpm ? '📦 NPM publish: Yes' : '📦 NPM publish: No',
+        deploymentSummary,
+        npmSummary,
       ]
       
       logger.info('\n📋 Release Summary:')
