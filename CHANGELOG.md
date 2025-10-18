@@ -48,3 +48,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESLint with TypeScript rules
 - Modern build system with TSUP
 - Automated pre-publish checks
+## [1.0.3] - 2025-10-18
+

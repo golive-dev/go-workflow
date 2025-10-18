@@ -1,6 +1,6 @@
 {
   "name": "@golive_me/go-workflow",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Comprehensive workflow automation for Go Corp projects with release management, CI/CD, and deployment orchestration",
   "type": "module",
   "main": "dist/index.js",
@@ -37,10 +37,10 @@
     }
   },
   "bin": {
-    "go-workflow": "dist/cli/index.js",
-    "go-release": "dist/cli/release.js",
-    "go-feature": "dist/cli/feature.js",
-    "go-deploy": "dist/cli/deploy.js"
+    "go-workflow": "dist/cli/index.cjs",
+    "go-release": "dist/cli/release.cjs",
+    "go-feature": "dist/cli/feature.cjs",
+    "go-deploy": "dist/cli/deploy.cjs"
   },
   "files": [
     "dist",
@@ -58,8 +58,8 @@
     "test:coverage": "vitest --coverage",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build && npm run type-check && npm run lint",
-    "release": "node dist/cli/release.js",
-    "feature-release": "node dist/cli/feature.js"
+    "release": "node dist/cli/index.cjs release",
+    "feature-release": "node dist/cli/index.cjs feature"
   },
   "keywords": [
     "workflow",
@@ -77,7 +77,7 @@
   "author": "golive_me",
   "license": "MIT",
   "dependencies": {
-    "chalk": "^5.3.0",
+    "chalk": "^4.1.2",
     "commander": "^11.1.0",
     "enquirer": "^2.4.1",
     "execa": "^8.0.1",
