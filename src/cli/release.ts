@@ -10,6 +10,8 @@ import { createGitOperations } from '../git/index.js'
 import { createNpmPublisher } from '../npm/index.js'
 import { createDeploymentManager } from '../deploy/index.js'
 import { createTimer, exitProcess, isCI, logger } from '../utils/index.js'
+import { execa } from 'execa'
+import { existsSync } from 'node:fs'
 import type { VersionBumpType } from '../types.js'
 
 export interface ReleaseOptions {
@@ -37,6 +39,9 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
       logger.error('Not a Git repository')
       exitProcess(1)
     }
+    
+    // Run tests first - fail fast if tests don't pass
+    await runTests()
     
     // Check for uncommitted changes
     const hasUncommitted = await git.hasUncommittedChanges()
@@ -407,6 +412,60 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
     
   } catch (error) {
     logger.error(`❌ Release failed: ${error}`)
+    exitProcess(1)
+  }
+}
+
+/**
+ * Run tests before proceeding with release
+ */
+async function runTests(): Promise<void> {
+  logger.step('🧪 Running tests...')
+  
+  // Check if package.json exists
+  if (!existsSync('package.json')) {
+    logger.warning('No package.json found, skipping tests')
+    return
+  }
+  
+  try {
+    // Read package.json to check for test scripts
+    const { readFile } = await import('node:fs/promises')
+    const packageJsonContent = await readFile('package.json', 'utf-8')
+    const packageJson = JSON.parse(packageJsonContent)
+    
+    // Check if test script exists
+    if (!packageJson.scripts?.test) {
+      logger.warning('No test script found in package.json, skipping tests')
+      return
+    }
+    
+    // Run tests in CI mode to prevent hanging
+    logger.info('   Running: npm test')
+    const testResult = await execa('npm', ['test'], {
+      stdio: 'pipe',
+      reject: false,
+      env: {
+        ...process.env,
+        CI: 'true', // Force CI mode to prevent interactive/watch mode
+      },
+    })
+    
+    if (testResult.exitCode === 0) {
+      logger.success('✅ All tests passed')
+    } else {
+      logger.error('❌ Tests failed:')
+      if (testResult.stdout) {
+        logger.error(testResult.stdout)
+      }
+      if (testResult.stderr) {
+        logger.error(testResult.stderr)
+      }
+      exitProcess(1)
+    }
+    
+  } catch (error) {
+    logger.error(`❌ Failed to run tests: ${error}`)
     exitProcess(1)
   }
 }
