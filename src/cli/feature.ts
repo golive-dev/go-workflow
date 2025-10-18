@@ -384,14 +384,16 @@ Examples:
   
   // Parse title
   const titleIndex = args.findIndex(arg => arg === '-t' || arg === '--title')
-  if (titleIndex !== -1 && args[titleIndex + 1]) {
-    options.title = args[titleIndex + 1]
+  const titleValue = titleIndex !== -1 ? args[titleIndex + 1] : undefined
+  if (titleValue) {
+    options.title = titleValue
   }
   
   // Parse description
   const descIndex = args.findIndex(arg => arg === '-d' || arg === '--description')
-  if (descIndex !== -1 && args[descIndex + 1]) {
-    options.description = args[descIndex + 1]
+  const descValue = descIndex !== -1 ? args[descIndex + 1] : undefined
+  if (descValue) {
+    options.description = descValue
   }
   
   runFeatureRelease(options).catch((error) => {
