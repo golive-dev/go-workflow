@@ -1,0 +1,118 @@
+{
+  "name": "@golive_me/go-workflow",
+  "version": "1.0.0",
+  "description": "Comprehensive workflow automation for Go Corp projects with release management, CI/CD, and deployment orchestration",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "default": "./dist/cli/index.js"
+    },
+    "./git": {
+      "types": "./dist/git/index.d.ts",
+      "default": "./dist/git/index.js"
+    },
+    "./changelog": {
+      "types": "./dist/changelog/index.d.ts",
+      "default": "./dist/changelog/index.js"
+    },
+    "./github": {
+      "types": "./dist/github/index.d.ts",
+      "default": "./dist/github/index.js"
+    },
+    "./npm": {
+      "types": "./dist/npm/index.d.ts",
+      "default": "./dist/npm/index.js"
+    },
+    "./deploy": {
+      "types": "./dist/deploy/index.d.ts",
+      "default": "./dist/deploy/index.js"
+    }
+  },
+  "bin": {
+    "go-workflow": "dist/cli/index.js",
+    "go-release": "dist/cli/release.js",
+    "go-feature": "dist/cli/feature.js",
+    "go-deploy": "dist/cli/deploy.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run type-check && npm run lint",
+    "release": "node dist/cli/release.js",
+    "feature-release": "node dist/cli/feature.js"
+  },
+  "keywords": [
+    "workflow",
+    "automation",
+    "release",
+    "ci-cd",
+    "deployment",
+    "git",
+    "github",
+    "npm",
+    "changelog",
+    "semantic-versioning",
+    "cloudflare-workers"
+  ],
+  "author": "golive_me",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "enquirer": "^2.4.1",
+    "execa": "^8.0.1",
+    "fs-extra": "^11.2.0",
+    "globby": "^14.0.0",
+    "marked": "^9.1.6",
+    "ora": "^8.0.1",
+    "semver": "^7.5.4",
+    "simple-git": "^3.20.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.9.0",
+    "@types/semver": "^7.5.6",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitest/coverage-v8": "^1.0.4",
+    "eslint": "^8.54.0",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.2",
+    "vitest": "^1.0.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/golive_me/go-workflow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/golive-dev/go-workflow/issues"
+  },
+  "homepage": "https://github.com/golive-dev/go-workflow#readme"
+}

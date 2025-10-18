@@ -1,0 +1,51 @@
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "description": "Example project with Go Workflow configuration in package.json",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit",
+    "release": "go-workflow release",
+    "deploy": "go-workflow deploy"
+  },
+  "go-workflow": {
+    "deployments": [
+      {
+        "target": "cloudflare-workers",
+        "name": "Production Worker",
+        "command": "wrangler deploy"
+      }
+    ],
+    "changelog": {
+      "includeTypes": ["feat", "fix", "perf"],
+      "sections": [
+        { "title": "Features", "types": ["feat"] },
+        { "title": "Bug Fixes", "types": ["fix"] },
+        { "title": "Performance", "types": ["perf"] }
+      ]
+    },
+    "github": {
+      "autoRelease": true,
+      "autoMerge": false,
+      "labels": ["automated"]
+    },
+    "npm": {
+      "access": "public",
+      "autoPublish": false
+    },
+    "commands": {
+      "preRelease": ["npm run lint", "npm run test", "npm run build"],
+      "postRelease": ["echo 'Release complete!'"]
+    }
+  },
+  "devDependencies": {
+    "@go-corp/workflow": "^1.0.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  }
+}
