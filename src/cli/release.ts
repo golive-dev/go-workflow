@@ -256,7 +256,7 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
           const npmChoice = await prompt<{ npm: boolean }>({
             type: 'confirm',
             name: 'npm',
-            message: `📦 Publish to npm?`,
+            message: '📦 Publish to npm?',
             initial: false,
           })
           shouldPublishNpm = (npmChoice as any).npm
