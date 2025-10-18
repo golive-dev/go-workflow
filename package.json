@@ -1,6 +1,6 @@
 {
   "name": "@golive_me/go-workflow",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Comprehensive workflow automation for Go Corp projects with release management, CI/CD, and deployment orchestration",
   "type": "module",
   "main": "dist/index.js",
