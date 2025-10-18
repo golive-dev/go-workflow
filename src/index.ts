@@ -95,7 +95,7 @@ export class Workflow {
       const currentBranch = await this.git.getCurrentBranch()
       const hasUncommitted = await this.git.hasUncommittedChanges()
 
-      if (hasUncommitted && options.interactive !== false) {
+      if (hasUncommitted && options.interactive === false) {
         throw new Error('Uncommitted changes detected. Please commit or stash them first.')
       }
 

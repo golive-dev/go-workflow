@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Release command implementation
  */
@@ -43,17 +41,71 @@ export async function runRelease(options: ReleaseOptions): Promise<void> {
     // Check for uncommitted changes
     const hasUncommitted = await git.hasUncommittedChanges()
     if (hasUncommitted) {
+      const changedFiles = await git.getChangedFiles()
+      
       if (options.interactive !== false && !isCI()) {
-        const shouldContinue = await prompt<{ continue: boolean }>({
+        // Show the uncommitted changes
+        logger.warning('⚠️  Uncommitted changes detected:')
+        const fileStats = await git.getChangedFiles()
+        fileStats.slice(0, 10).forEach(file => {
+          logger.info(`   • ${file}`)
+        })
+        if (fileStats.length > 10) {
+          logger.info(`   ... and ${fileStats.length - 10} more files`)
+        }
+        
+        const shouldCommit = await prompt<{ commit: boolean }>({
           type: 'confirm',
-          name: 'continue',
-          message: 'You have uncommitted changes. Continue anyway?',
-          initial: false,
+          name: 'commit',
+          message: 'Would you like to commit these changes now?',
+          initial: true,
         })
         
-        if (!(shouldContinue as any).continue) {
-          logger.warning('Please commit or stash your changes before releasing')
-          exitProcess(1)
+        if ((shouldCommit as any).commit) {
+          // Generate a suggested commit message based on the changes
+          let suggestedMessage = 'chore: prepare for release'
+          
+          // Try to be smarter about the commit message
+          const hasTypeScript = changedFiles.some(f => f.endsWith('.ts'))
+          const hasTests = changedFiles.some(f => f.includes('test') || f.includes('spec'))
+          const hasConfig = changedFiles.some(f => f.includes('config') || f.endsWith('.json') || f.endsWith('.yml'))
+          const hasDocs = changedFiles.some(f => f.endsWith('.md'))
+          
+          if (hasTests) {
+            suggestedMessage = 'test: update tests and fix issues'
+          } else if (hasTypeScript && hasConfig) {
+            suggestedMessage = 'fix: resolve TypeScript errors and update config'
+          } else if (hasTypeScript) {
+            suggestedMessage = 'fix: resolve TypeScript compilation issues'
+          } else if (hasDocs) {
+            suggestedMessage = 'docs: update documentation'
+          } else if (hasConfig) {
+            suggestedMessage = 'chore: update configuration'
+          }
+          
+          const commitMessage = await prompt<{ message: string }>({
+            type: 'input',
+            name: 'message',
+            message: 'Commit message:',
+            initial: suggestedMessage,
+            validate: value => value.length > 0 || 'Commit message is required',
+          })
+          
+          await git.stageFiles()
+          const commitHash = await git.commit((commitMessage as any).message)
+          logger.success(`✅ Changes committed: ${commitHash} ${(commitMessage as any).message}`)
+        } else {
+          const shouldContinue = await prompt<{ continue: boolean }>({
+            type: 'confirm',
+            name: 'continue',
+            message: 'Continue release with uncommitted changes?',
+            initial: false,
+          })
+          
+          if (!(shouldContinue as any).continue) {
+            logger.warning('Please commit or stash your changes before releasing')
+            exitProcess(1)
+          }
         }
       } else {
         logger.error('Uncommitted changes detected. Please commit or stash them first.')

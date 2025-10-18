@@ -248,10 +248,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       const index = unreleasedMatch.index ?? 0
       const beforeLength = unreleasedMatch[1]?.length ?? 0
       const beforeUnreleased = existingContent.substring(0, index + beforeLength)
+      const unreleasedContent = unreleasedMatch[2] || ''
       const afterIndex = (unreleasedMatch.index ?? 0) + unreleasedMatch[0].length - (unreleasedMatch[3]?.length ?? 0)
       const afterUnreleased = existingContent.substring(afterIndex)
       
-      updatedContent = `${beforeUnreleased}\n${newEntry}${afterUnreleased}`
+      updatedContent = `${beforeUnreleased}${unreleasedContent}\n${newEntry}${afterUnreleased}`
     } else {
       // Fallback: insert after the header
       const headerMatch = existingContent.match(/^(# Changelog.*?\n\n)(.*)/s)

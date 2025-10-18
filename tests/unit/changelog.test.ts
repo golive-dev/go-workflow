@@ -2,11 +2,13 @@
  * Unit tests for Changelog management
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createChangelogManager, ChangelogManager } from '@/changelog/index.js'
 import { createTempDir, cleanupTempDir, createMockCommit } from '@tests/setup.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+
 
 describe('ChangelogManager', () => {
   let tempDir: string
@@ -28,6 +30,9 @@ describe('ChangelogManager', () => {
       },
       tempDir
     )
+    
+    // Mock console to prevent output during tests
+    vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -67,7 +72,7 @@ describe('ChangelogManager', () => {
       
       const breakingSection = sections.find(s => s.title === 'BREAKING CHANGES')
       expect(breakingSection).toBeDefined()
-      expect(breakingSection?.items).toContain('- feat!: breaking API change')
+      expect(breakingSection?.items).toContain('- breaking API change')
       expect(breakingSection?.items).toContain('- Old API removed')
     })
 

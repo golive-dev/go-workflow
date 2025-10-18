@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Deploy command implementation
  */

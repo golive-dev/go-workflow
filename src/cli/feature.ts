@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Feature command implementation
  */
@@ -347,4 +345,53 @@ export async function runFeatureRelease(options: FeatureOptions): Promise<void> 
     logger.error(`❌ Feature release failed: ${error}`)
     exitProcess(1)
   }
+}
+
+// CLI entry point - check if this file was called directly
+if (require.main === module) {
+  const args = process.argv.slice(2)
+  
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
+🚀 Go Corp Feature Release CLI
+
+Usage:
+  node feature.cjs [options]
+
+Options:
+  -t, --title <title>          Feature title
+  -d, --description <desc>     Feature description
+  --no-interactive            Run in non-interactive mode
+  --auto-merge                Enable auto-merge for PR
+  -h, --help                  Show this help message
+
+Examples:
+  node feature.cjs                    # Interactive feature release
+  node feature.cjs --title "New API"  # With custom title
+  node feature.cjs --no-interactive   # Non-interactive mode
+`)
+    process.exit(0)
+  }
+  
+  const options: FeatureOptions = {
+    interactive: !args.includes('--no-interactive'),
+    autoMerge: args.includes('--auto-merge'),
+  }
+  
+  // Parse title
+  const titleIndex = args.findIndex(arg => arg === '-t' || arg === '--title')
+  if (titleIndex !== -1 && args[titleIndex + 1]) {
+    (options as any).title = args[titleIndex + 1]
+  }
+  
+  // Parse description
+  const descIndex = args.findIndex(arg => arg === '-d' || arg === '--description')
+  if (descIndex !== -1 && args[descIndex + 1]) {
+    (options as any).description = args[descIndex + 1]
+  }
+  
+  runFeatureRelease(options).catch((error) => {
+    console.error(`❌ Feature release failed: ${error.message}`)
+    process.exit(1)
+  })
 }

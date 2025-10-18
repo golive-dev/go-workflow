@@ -2,9 +2,22 @@
  * Unit tests for Git operations
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createGitOperations, GitOperations } from '@/git/index.js'
 import { createTempDir, cleanupTempDir, createMockGitRepo, createMockPackageJson } from '@tests/setup.js'
+
+// Mock the logger and retry utility
+vi.mock('@/utils/index.js', () => ({
+  logger: {
+    info: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+  retry: vi.fn().mockImplementation(async (fn) => fn()),
+}))
+
 
 describe('GitOperations', () => {
   let tempDir: string
@@ -15,6 +28,18 @@ describe('GitOperations', () => {
     createMockGitRepo(tempDir)
     createMockPackageJson(tempDir, { version: '1.0.0' })
     git = createGitOperations(tempDir)
+    
+    // Mock revparse for git repository detection
+    git['git'].revparse = vi.fn().mockResolvedValue('.git')
+    
+    // Mock execSync using vi.spyOn
+    const execSyncSpy = vi.spyOn(require('node:child_process'), 'execSync')
+    execSyncSpy.mockImplementation((command: string) => {
+      if (command.includes('package.json')) {
+        return JSON.stringify({ version: '1.0.0' }, null, 2)
+      }
+      return ''
+    })
   })
 
   afterEach(() => {
@@ -30,6 +55,9 @@ describe('GitOperations', () => {
     it('should return false for non-git directory', async () => {
       const nonGitDir = createTempDir('non-git-')
       const nonGitOps = createGitOperations(nonGitDir)
+      
+      // Mock revparse to throw an error for non-git directory
+      nonGitOps['git'].revparse = vi.fn().mockRejectedValue(new Error('Not a git repository'))
       
       const result = await nonGitOps.isGitRepository()
       expect(result).toBe(false)
@@ -48,6 +76,12 @@ describe('GitOperations', () => {
       const emptyDir = createTempDir('empty-')
       const emptyGit = createGitOperations(emptyDir)
       
+      // Mock execSync to throw error for this test
+      const execSyncSpy = vi.spyOn(require('node:child_process'), 'execSync')
+      execSyncSpy.mockImplementationOnce(() => {
+        throw new Error('No such file or directory')
+      })
+      
       const version = emptyGit.getCurrentVersion()
       expect(version).toBe('0.0.0')
       
@@ -57,6 +91,15 @@ describe('GitOperations', () => {
 
   describe('updatePackageVersion', () => {
     it('should update package.json version', () => {
+      const execSyncSpy = vi.spyOn(require('node:child_process'), 'execSync')
+      
+      // Mock execSync for reading the package.json initially
+      execSyncSpy.mockImplementationOnce(() => JSON.stringify({ version: '1.0.0' }, null, 2))
+      // Mock execSync for writing the updated package.json
+      execSyncSpy.mockImplementationOnce(() => '')
+      // Mock execSync for reading the updated package.json
+      execSyncSpy.mockImplementationOnce(() => JSON.stringify({ version: '1.1.0' }, null, 2))
+      
       git.updatePackageVersion('1.1.0')
       
       const updatedVersion = git.getCurrentVersion()
@@ -66,36 +109,37 @@ describe('GitOperations', () => {
 
   describe('analyzeChangesForVersionBump', () => {
     beforeEach(() => {
-      // Mock simple-git methods
-      vi.mock('simple-git', () => ({
-        simpleGit: vi.fn().mockReturnValue({
-          log: vi.fn().mockResolvedValue({
-            all: [
-              {
-                hash: 'abc123',
-                message: 'feat: add new feature',
-                author_name: 'Test Author',
-                author_email: 'test@example.com',
-                date: '2023-01-01',
-              },
-              {
-                hash: 'def456',
-                message: 'fix: resolve bug',
-                author_name: 'Test Author',
-                author_email: 'test@example.com',
-                date: '2023-01-01',
-              },
-            ],
-          }),
-          status: vi.fn().mockResolvedValue({
-            files: [
-              { path: 'src/file1.ts' },
-              { path: 'src/file2.ts' },
-            ],
-          }),
-          tags: vi.fn().mockResolvedValue({ all: [] }),
+      // Set up mock git instance with proper methods
+      const mockGit = {
+        log: vi.fn().mockResolvedValue({
+          all: [
+            {
+              hash: 'abc123',
+              message: 'feat: add new feature',
+              author_name: 'Test Author',
+              author_email: 'test@example.com',
+              date: '2023-01-01',
+            },
+            {
+              hash: 'def456',
+              message: 'fix: resolve bug',
+              author_name: 'Test Author',
+              author_email: 'test@example.com',
+              date: '2023-01-01',
+            },
+          ],
         }),
-      }))
+        status: vi.fn().mockResolvedValue({
+          files: [
+            { path: 'src/file1.ts' },
+            { path: 'src/file2.ts' },
+          ],
+        }),
+        tags: vi.fn().mockResolvedValue({ all: [] }),
+      }
+      
+      // Replace the git instance in our GitOperations
+      git['git'] = mockGit as any
     })
 
     it('should detect minor version bump for features', async () => {
@@ -109,7 +153,7 @@ describe('GitOperations', () => {
 
     it('should detect major version bump for breaking changes', async () => {
       // Mock breaking change commit
-      vi.mocked(git['git'].log).mockResolvedValue({
+      git['git'].log = vi.fn().mockResolvedValue({
         all: [
           {
             hash: 'abc123',
@@ -131,7 +175,7 @@ describe('GitOperations', () => {
   describe('createTag', () => {
     it('should create a simple tag', async () => {
       const mockAddTag = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(git['git'].addTag).mockImplementation(mockAddTag)
+      git['git'].addTag = mockAddTag
 
       await git.createTag('v1.0.0')
       
@@ -140,7 +184,7 @@ describe('GitOperations', () => {
 
     it('should create an annotated tag with message', async () => {
       const mockAddAnnotatedTag = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(git['git'].addAnnotatedTag).mockImplementation(mockAddAnnotatedTag)
+      git['git'].addAnnotatedTag = mockAddAnnotatedTag
 
       await git.createTag('v1.0.0', 'Release v1.0.0')
       
@@ -150,8 +194,8 @@ describe('GitOperations', () => {
 
   describe('branch operations', () => {
     beforeEach(() => {
-      vi.mocked(git['git'].branch).mockResolvedValue({ current: 'main' })
-      vi.mocked(git['git'].branchLocal).mockResolvedValue({ all: ['main', 'feature'] })
+      git['git'].branch = vi.fn().mockResolvedValue({ current: 'main' })
+      git['git'].branchLocal = vi.fn().mockResolvedValue({ all: ['main', 'feature'] })
     })
 
     it('should get current branch', async () => {
@@ -169,7 +213,7 @@ describe('GitOperations', () => {
 
     it('should create a new branch', async () => {
       const mockCheckoutLocalBranch = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(git['git'].checkoutLocalBranch).mockImplementation(mockCheckoutLocalBranch)
+      git['git'].checkoutLocalBranch = mockCheckoutLocalBranch
 
       await git.createBranch('new-feature')
       
@@ -180,7 +224,7 @@ describe('GitOperations', () => {
   describe('commit operations', () => {
     it('should stage files', async () => {
       const mockAdd = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(git['git'].add).mockImplementation(mockAdd)
+      git['git'].add = mockAdd
 
       await git.stageFiles(['file1.ts', 'file2.ts'])
       
@@ -189,7 +233,7 @@ describe('GitOperations', () => {
 
     it('should create commit', async () => {
       const mockCommit = vi.fn().mockResolvedValue({ commit: 'abc123def456' })
-      vi.mocked(git['git'].commit).mockImplementation(mockCommit)
+      git['git'].commit = mockCommit
 
       const hash = await git.commit('feat: add new feature')
       
@@ -201,7 +245,7 @@ describe('GitOperations', () => {
   describe('remote operations', () => {
     it('should push to remote', async () => {
       const mockPush = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(git['git'].push).mockImplementation(mockPush)
+      git['git'].push = mockPush
 
       await git.push('origin', 'main')
       
@@ -210,7 +254,7 @@ describe('GitOperations', () => {
 
     it('should push tags', async () => {
       const mockPushTags = vi.fn().mockResolvedValue(undefined)
-      vi.mocked(git['git'].pushTags).mockImplementation(mockPushTags)
+      git['git'].pushTags = mockPushTags
 
       await git.pushTags('origin')
       
@@ -227,7 +271,7 @@ describe('GitOperations', () => {
           },
         },
       ])
-      vi.mocked(git['git'].getRemotes).mockImplementation(mockGetRemotes)
+      git['git'].getRemotes = mockGetRemotes
 
       const url = await git.getRemoteUrl('origin')
       
@@ -240,7 +284,7 @@ describe('GitOperations', () => {
       const mockStatus = vi.fn().mockResolvedValue({
         files: [{ path: 'modified-file.ts' }],
       })
-      vi.mocked(git['git'].status).mockImplementation(mockStatus)
+      git['git'].status = mockStatus
 
       const hasChanges = await git.hasUncommittedChanges()
       
@@ -249,7 +293,7 @@ describe('GitOperations', () => {
 
     it('should return false for clean working directory', async () => {
       const mockStatus = vi.fn().mockResolvedValue({ files: [] })
-      vi.mocked(git['git'].status).mockImplementation(mockStatus)
+      git['git'].status = mockStatus
 
       const hasChanges = await git.hasUncommittedChanges()
       

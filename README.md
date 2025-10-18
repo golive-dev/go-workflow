@@ -329,7 +329,7 @@ BREAKING CHANGE: The old API has been removed. Use newAPI() instead."
 2. Authenticate: `gh auth login`
 3. Configure repository access
 
-### Features
+## Key Features
 
 - **Automatic PR Creation**: Creates PRs for feature branches
 - **Auto-merge**: Enables auto-merge with squash strategy

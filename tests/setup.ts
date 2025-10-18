@@ -75,18 +75,7 @@ export function mockExternalCommands() {
   }))
 }
 
-// Mock file system operations
-export function mockFileSystem() {
-  vi.mock('node:fs', async () => {
-    const actual = await vi.importActual<typeof import('node:fs')>('node:fs')
-    return {
-      ...actual,
-      writeFileSync: vi.fn(),
-      readFileSync: vi.fn().mockReturnValue('{}'),
-      existsSync: vi.fn().mockReturnValue(true),
-    }
-  })
-}
+// Mock file system operations - REMOVED to prevent global mocking
 
 // Mock simple-git
 export function mockSimpleGit() {
